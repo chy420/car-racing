@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>極速狂飆 Retro Neon Racer F1 - Ultra Grand Prix Edition</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+$0
+    <!-- Google Fonts Inter & Orbitron -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+        body {
+            font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
+            background-color: #05050a;
+            color: #ffffff;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .neon-glow-cyan {
+            text-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff, 0 0 40px #00f0ff;
+        }
+        .neon-glow-pink {
+            text-shadow: 0 0 10px #ff007f, 0 0 20px #ff007f, 0 0 40px #ff007f;
+        }
+        .neon-box-cyan {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4), inset 0 0 15px rgba(0, 240, 255, 0.2);
+            border: 2px solid #00f0ff;
+        }
+        .neon-box-pink {
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.4), inset 0 0 15px rgba(255, 0, 127, 0.2);
+            border: 2px solid #ff007f;
+        }
+        .glass-panel {
+            background: rgba(10, 10, 20, 0.82);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        /* Touch buttons custom styling */
+        .touch-btn {
+            background: rgba(20, 25, 45, 0.7);
+            border: 2px solid rgba(0, 240, 255, 0.5);
+            backdrop-filter: blur(4px);
+            active: background-color rgba(0, 240, 255, 0.4);
+        }
+        /* Custom scrollbar for modals */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00f0ff;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="relative w-full h-full select-none overflow-hidden">
+
+    <!-- GAME CANVAS -->
+    <canvas id="gameCanvas" class="absolute inset-0 z-0"></canvas>
+
+    <!-- UI OVERLAY LAYER -->
+    <div id="uiOverlay" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-4">
+        
+        <!-- TOP HUD -->
+        <div id="topHUD" class="hidden flex flex-wrap justify-between items-start gap-2 w-full max-w-6xl mx-auto pointer-events-auto">
+            <!-- Left Info Panel -->
+            <div class="glass-panel rounded-xl p-3 flex items-center gap-4 border-l-4 border-cyan-400">
+                <div>
+                    <div class="text-xs text-gray-400 font-bold uppercase tracking-widest">目前分數</div>
+                    <div id="hudScore" class="text-2xl md:text-3xl font-black text-cyan-400 tracking-wider">0</div>
+                </div>
+                <div class="h-8 w-px bg-gray-700"></div>
+                <div>
+                    <div class="text-xs text-gray-400 font-bold uppercase tracking-widest">金幣 ($)</div>
+                    <div id="hudCoins" class="text-xl md:text-2xl font-bold text-yellow-400">0</div>
+                </div>
+            </div>
+
+            <!-- Center Boss HUD (Hidden when no boss) -->
+            <div id="bossHUD" class="hidden glass-panel rounded-xl p-3 w-full max-w-md border-2 border-red-500 shadow-lg shadow-red-500/30">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs font-black text-red-400 tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-skull-crossbones animate-pulse"></i> 網絡霸主 CYBER BOSS
+                    </span>
+                    <span id="bossHealthText" class="text-xs font-bold text-gray-300">100%</span>
+                </div>
+                <div class="w-full h-3 bg-gray-900 rounded-full overflow-hidden border border-red-500/50">
+                    <div id="bossHealthBar" class="h-full bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 w-full transition-all duration-200"></div>
+                </div>
+            </div>
+
+            <!-- Right Telemetry Panel -->
+            <div class="glass-panel rounded-xl p-3 flex items-center gap-4 border-r-4 border-pink-500">
+                <div class="text-right">
+                    <div class="text-xs text-gray-400 font-bold uppercase tracking-widest">車速 (KM/H)</div>
+                    <div id="hudSpeed" class="text-2xl md:text-3xl font-black text-pink-500">0</div>
+                </div>
+                <div class="h-8 w-px bg-gray-700"></div>
+                <!-- Missile Count & Audio Buttons -->
+                <div class="flex items-center gap-2">
+                    <div class="flex flex-col items-center justify-center bg-gray-900/80 px-2 py-1 rounded border border-yellow-500/40">
+                        <span class="text-[10px] text-yellow-400 font-bold">飛彈 🚀</span>
+                        <span id="hudMissiles" class="text-lg font-black text-yellow-400">0</span>
+                    </div>
+                    <button id="btnToggleAudio" class="p-2.5 rounded-lg glass-panel hover:bg-cyan-500/20 text-cyan-400 border border-cyan-400/40 transition">
+                        <i id="audioIcon" class="fa-solid fa-volume-high text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER FLOATING COMBOS / NOTIFICATIONS -->
+        <div id="floatingCombo" class="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none opacity-0 transition-all duration-300">
+            <div id="comboText" class="text-3xl md:text-5xl font-black text-yellow-300 italic neon-glow-pink">極限掠過 +100</div>
+        </div>
+
+        <!-- BOTTOM HUD STATUS & ACTIVE POWERUPS -->
+        <div id="bottomHUD" class="hidden flex flex-col items-center gap-2 w-full max-w-lg mx-auto pointer-events-none">
+            <!-- Active Status Badges -->
+            <div id="powerupStatus" class="flex gap-2 mb-1">
+                <span id="badgeShield" class="hidden px-3 py-1 bg-cyan-500/20 border border-cyan-400 text-cyan-300 text-xs font-bold rounded-full flex items-center gap-1">
+                    <i class="fa-solid fa-shield-halved"></i> 能量護盾
+                </span>
+                <span id="badgeMagnet" class="hidden px-3 py-1 bg-purple-500/20 border border-purple-400 text-purple-300 text-xs font-bold rounded-full flex items-center gap-1">
+                    <i class="fa-solid fa-magnet"></i> 金幣磁鐵
+                </span>
+                <span id="badgeNitro" class="hidden px-3 py-1 bg-orange-500/20 border border-orange-400 text-orange-300 text-xs font-bold rounded-full flex items-center gap-1 animate-pulse">
+                    <i class="fa-solid fa-bolt"></i> 氮氣加速
+                </span>
+            </div>
+
+            <!-- Nitro Gauge Bar -->
+            <div class="w-full glass-panel p-1.5 rounded-full border border-orange-500/40">
+                <div class="flex justify-between text-[10px] text-orange-400 px-2 font-bold mb-0.5">
+                    <span>NITRO BOOST (SPACE)</span>
+                    <span id="nitroPercentText">100%</span>
+                </div>
+                <div class="w-full h-2.5 bg-gray-900 rounded-full overflow-hidden">
+                    <div id="nitroBar" class="h-full bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 w-full transition-all duration-100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOUCH CONTROLS OVERLAY (Shown on Mobile / Touch) -->
+        <div id="touchControls" class="hidden pointer-events-auto flex justify-between items-end w-full pb-2 px-1">
+            <!-- Left Side: Steering -->
+            <div class="flex gap-3">
+                <button id="btnTouchLeft" class="touch-btn w-16 h-16 rounded-2xl flex items-center justify-center text-cyan-400 text-2xl active:scale-95 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <button id="btnTouchRight" class="touch-btn w-16 h-16 rounded-2xl flex items-center justify-center text-cyan-400 text-2xl active:scale-95 transition">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+            <!-- Center Side: Missile -->
+            <button id="btnTouchMissile" class="touch-btn w-14 h-14 rounded-full border-yellow-400 flex items-center justify-center text-yellow-400 text-2xl active:scale-95 transition">
+                <i class="fa-solid fa-rocket"></i>
+            </button>
+            <!-- Right Side: Action -->
+            <div class="flex gap-3">
+                <button id="btnTouchBrake" class="touch-btn w-16 h-16 rounded-2xl border-red-500 flex items-center justify-center text-red-400 text-2xl active:scale-95 transition">
+                    <i class="fa-solid fa-ban"></i>
+                </button>
+                <button id="btnTouchNitro" class="touch-btn w-16 h-16 rounded-2xl border-orange-400 bg-orange-500/20 flex items-center justify-center text-orange-400 text-2xl active:scale-95 transition">
+                    <i class="fa-solid fa-bolt text-3xl"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN MENU OVERLAY -->
+    <div id="mainMenu" class="absolute inset-0 z-20 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+        <div class="max-w-4xl w-full glass-panel rounded-3xl p-6 md:p-8 border border-cyan-500/30 text-center flex flex-col my-auto shadow-2xl shadow-cyan-500/20">
+            <!-- Game Title -->
+            <div class="mb-6">
+                <span class="px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-400/40 text-cyan-400 text-xs md:text-sm font-bold tracking-widest uppercase">
+                    ULTRA GRAND PRIX EDITION
+                </span>
+                <h1 class="text-4xl md:text-6xl font-black italic tracking-wider mt-3 bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-pink-500 to-yellow-400 neon-glow-cyan">
+                    極速狂飆 RETRO F1
+                </h1>
+                <p class="text-gray-400 text-sm md:text-base mt-2 font-medium">賽博朋克 Grand Prix 霓虹終極競速</p>
+            </div>
+
+            <!-- F1 Team Selection Garage Slider/Grid -->
+            <div class="mb-6 text-left">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-flag-checkered text-cyan-400"></i> 選擇 F1 車隊 GARAGE SELECTION
+                </h3>
+                <div id="teamGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <!-- Dynamic Team Cards Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col md:flex-row gap-3 justify-center items-center">
+                <button id="btnStartGame" class="w-full md:w-auto px-10 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xl rounded-2xl shadow-lg shadow-cyan-500/40 active:scale-95 transition transform">
+                    <i class="fa-solid fa-play mr-2"></i> 開始比賽 START RACE
+                </button>
+                <button id="btnOpenGarage" class="w-full md:w-auto px-6 py-4 glass-panel border border-yellow-400/50 hover:bg-yellow-400/10 text-yellow-400 font-bold text-lg rounded-2xl active:scale-95 transition">
+                    <i class="fa-solid fa-wrench mr-2"></i> 車隊升級 & 獎盃
+                </button>
+                <button id="btnGyroCalibrate" class="w-full md:w-auto px-5 py-4 glass-panel border border-pink-500/50 hover:bg-pink-500/10 text-pink-400 font-bold text-sm rounded-2xl active:scale-95 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-mobile-screen"></i> 陀螺儀校準
+                </button>
+            </div>
+
+            <!-- Controls Info -->
+            <div class="mt-6 pt-4 border-t border-gray-800 text-xs text-gray-400 flex flex-wrap justify-around gap-2">
+                <span><b class="text-cyan-400">← / → / A D:</b> 左右轉向</span>
+                <span><b class="text-cyan-400">SPACE:</b> 氮氣加速</span>
+                <span><b class="text-cyan-400">↓ / S:</b> 煞車減速</span>
+                <span><b class="text-cyan-400">F:</b> 發射追蹤飛彈</span>
+                <span><b class="text-cyan-400">觸控:</b> 螢幕按鈕或直接拖曳</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- GARAGE & UPGRADES MODAL -->
+    <div id="garageModal" class="hidden absolute inset-0 z-30 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+        <div class="max-w-2xl w-full glass-panel rounded-3xl p-6 border border-yellow-400/30 text-left max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-800">
+                <h2 class="text-2xl font-black text-yellow-400 flex items-center gap-2">
+                    <i class="fa-solid fa-warehouse"></i> 車隊改裝車庫 & 成就
+                </h2>
+                <button id="btnCloseGarage" class="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
+            </div>
+
+            <!-- Total Coins -->
+            <div class="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 flex justify-between items-center">
+                <span class="text-sm font-bold text-gray-300">擁有總金幣 Total Coins:</span>
+                <span id="garageCoins" class="text-2xl font-black text-yellow-400">$0</span>
+            </div>
+
+            <!-- Upgrade Items -->
+            <div class="space-y-3 mb-6">
+                <!-- Top Speed Upgrade -->
+                <div class="glass-panel p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-400 text-sm">極速升級 (Top Speed)</div>
+                        <div class="text-xs text-gray-400">增加 F1 賽車的最高基礎時速</div>
+                        <div id="lvlSpeed" class="text-xs text-gray-300 mt-1">等級: 0 / 5</div>
+                    </div>
+                    <button id="btnBuySpeed" class="px-4 py-2 bg-yellow-500 text-black font-bold text-xs rounded-lg hover:bg-yellow-400 transition">
+                        升級 $200
+                    </button>
+                </div>
+
+                <!-- Acceleration Upgrade -->
+                <div class="glass-panel p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-400 text-sm">加速度 (Acceleration)</div>
+                        <div class="text-xs text-gray-400">提升提速效率與煞車反應</div>
+                        <div id="lvlAccel" class="text-xs text-gray-300 mt-1">等級: 0 / 5</div>
+                    </div>
+                    <button id="btnBuyAccel" class="px-4 py-2 bg-yellow-500 text-black font-bold text-xs rounded-lg hover:bg-yellow-400 transition">
+                        升級 $200
+                    </button>
+                </div>
+
+                <!-- Nitro Efficiency -->
+                <div class="glass-panel p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-400 text-sm">氮氣推進系統 (Nitro Capacity)</div>
+                        <div class="text-xs text-gray-400">延長氮氣噴射持續時間與充能效率</div>
+                        <div id="lvlNitro" class="text-xs text-gray-300 mt-1">等級: 0 / 5</div>
+                    </div>
+                    <button id="btnBuyNitro" class="px-4 py-2 bg-yellow-500 text-black font-bold text-xs rounded-lg hover:bg-yellow-400 transition">
+                        升級 $250
+                    </button>
+                </div>
+            </div>
+
+            <!-- Achievements List -->
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3">榮譽成就 Trophies</h3>
+            <div id="achievementsList" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER OVERLAY -->
+    <div id="gameOverMenu" class="hidden absolute inset-0 z-30 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+        <div class="max-w-md w-full glass-panel rounded-3xl p-6 border border-red-500/40 text-center shadow-2xl shadow-red-500/30">
+            <h2 class="text-4xl font-black text-red-500 italic neon-glow-pink mb-2">比賽結束</h2>
+            <p class="text-gray-400 text-xs mb-6">CRASHED! F1 賽車嚴重毀損</p>
+
+            <div class="space-y-3 mb-6 bg-gray-900/60 p-4 rounded-2xl border border-gray-800">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-400">本次得分 Score:</span>
+                    <span id="goScore" class="text-2xl font-black text-cyan-400">0</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-400">歷史最高分 Best:</span>
+                    <span id="goHighScore" class="text-xl font-bold text-yellow-400">0</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-400">獲得金幣 Coins:</span>
+                    <span id="goCoins" class="text-lg font-bold text-yellow-400">+0</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-400">擊退 Boss 次數:</span>
+                    <span id="goBosses" class="text-lg font-bold text-red-400">0</span>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="btnRestart" class="flex-1 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 font-black text-black rounded-xl shadow-lg shadow-cyan-500/30 hover:brightness-110 active:scale-95 transition">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> 再戰一局
+                </button>
+                <button id="btnReturnMenu" class="py-3.5 px-5 glass-panel border border-gray-600 text-gray-300 font-bold rounded-xl hover:bg-gray-800 active:scale-95 transition">
+                    <i class="fa-solid fa-house"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        /**
+         * RETRO NEON RACER F1 - ULTRA GRAND PRIX EDITION
+         * Single-file complete JS implementation with procedural Web Audio Engine & Canvas Graphics.
+         */
+
+        // --- CONSTANTS & DATA STRUCTURES ---
+        const TEAMS = {
+            ferrari: {
+                id: 'ferrari',
+                name: '法拉利 Scuderia',
+                color: '#ff1801',
+                accent: '#fff200',
+                bonusText: '極速最高 (+15% Max Speed)',
+                speedMult: 1.15,
+                accelMult: 1.0,
+                nitroMult: 1.0,
+                coinMult: 1.0
+            },
+            redbull: {
+                id: 'redbull',
+                name: '紅牛 Oracle Racing',
+                color: '#141e46',
+                accent: '#f51720',
+                bonusText: '起步加速狂暴 (+20% Accel)',
+                speedMult: 1.05,
+                accelMult: 1.20,
+                nitroMult: 1.0,
+                coinMult: 1.0
+            },
+            mclaren: {
+                id: 'mclaren',
+                name: '麥拉倫 McLaren F1',
+                color: '#ff8000',
+                accent: '#00f0ff',
+                bonusText: '敏捷操控 & 低風阻',
+                speedMult: 1.05,
+                accelMult: 1.10,
+                nitroMult: 1.1,
+                coinMult: 1.0
+            },
+            mercedes: {
+                id: 'mercedes',
+                name: '賓士 AMG Petronas',
+                color: '#00d2be',
+                accent: '#e0e0e0',
+                bonusText: '氮氣推進持續力 (+25% Nitro)',
+                speedMult: 1.0,
+                accelMult: 1.0,
+                nitroMult: 1.25,
+                coinMult: 1.0
+            },
+            aston: {
+                id: 'aston',
+                name: '阿斯頓馬丁 Aston Martin',
+                color: '#00594f',
+                accent: '#cedc00',
+                bonusText: '贊助商金幣 double (+50% Coins)',
+                speedMult: 1.0,
+                accelMult: 1.0,
+                nitroMult: 1.0,
+                coinMult: 1.50
+            },
+            williams: {
+                id: 'williams',
+                name: '威廉斯 Williams',
+                color: '#00a0de',
+                accent: '#ffffff',
+                bonusText: '堅固防護 (護盾時間 +40%)',
+                speedMult: 1.02,
+                accelMult: 1.05,
+                nitroMult: 1.0,
+                coinMult: 1.1
+            }
+        };
+
+        const WEATHERS = [
+            { id: 'night', name: 'Cyber Night 霓虹夜幕', skyTop: '#05030a', skyBot: '#150a2a', roadColor: '#12111d', grip: 1.0, rain: false },
+            { id: 'dawn', name: 'Cyber Dawn 賽博曙光', skyTop: '#2b0938', skyBot: '#8c2560', roadColor: '#1e162b', grip: 0.98, rain: false },
+            { id: 'dusk', name: 'Cyberpunk Dusk 黃昏之城', skyTop: '#3a0826', skyBot: '#f05b43', roadColor: '#241424', grip: 0.95, rain: false },
+            { id: 'rain', name: 'Heavy Rain 暴雨夜戰', skyTop: '#020912', skyBot: '#0b2136', roadColor: '#0a1520', grip: 0.78, rain: true }
+        ];
+
+        const ACHIEVEMENTS = [
+            { id: 'first_race', title: '初次踏上賽道', desc: '完成第一場比賽', icon: '🏁' },
+            { id: 'score_1000', title: '千分車神', desc: '單局分數達到 1,000 分', icon: '🏆' },
+            { id: 'boss_slayer', title: '霸主剋星', desc: '擊敗至少 1 艘 Cyber Boss 艦艇', icon: '💥' },
+            { id: 'coin_collector', title: '金幣大亨', desc: '累計收集 100 枚金幣', icon: '💰' },
+            { id: 'speed_demon', title: '極速狂熱', desc: '達到時速 320 KM/H 以上', icon: '⚡' }
+        ];
+
+        // --- GAME ENGINE STATE ---
+        let canvas, ctx;
+        let selectedTeamKey = 'ferrari';
+        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER
+        let score = 0;
+        let coinsCollectedTotal = 0;
+        let sessionCoins = 0;
+        let distanceTraveled = 0;
+        let bossesDefeated = 0;
+        let lastTime = 0;
+        let screenShake = 0;
+
+        // Player Upgrades (Saved in LocalStorage)
+        let upgrades = {
+            speed: 0,
+            accel: 0,
+            nitro: 0,
+            totalCoins: 0,
+            unlockedAchievements: []
+        };
+
+        // Gyro / Tilt Controls
+        let gyroActive = false;
+        let gyroGamma = 0; // Left-Right tilt
+        let gyroZero = 0;  // Calibration offset
+
+        // Key Inputs State
+        const keys = {
+            left: false,
+            right: false,
+            up: false,
+            down: false,
+            nitro: false,
+            missile: false
+        };
+
+        // Touch Dragging State
+        let touchDragX = null;
+
+        // Player F1 Car Object
+        let player = {
+            x: 0, // Road normalized X (-1.0 to 1.0)
+            y: 0, // Road distance offset
+            speed: 0, // Current speed KM/H
+            baseMaxSpeed: 280,
+            currentMaxSpeed: 280,
+            accel: 180,
+            handling: 2.2,
+            nitro: 100,
+            isNitroActive: false,
+            shieldTime: 0,
+            magnetTime: 0,
+            missiles: 0,
+            width: 54,
+            height: 95
+        };
+
+        // Weather System
+        let currentWeatherIdx = 0;
+        let weatherTimer = 0;
+
+        // Entities Arrays
+        let rivals = [];
+        let powerups = [];
+        let particles = [];
+        let missiles = [];
+        let rainDrops = [];
+        let boss = null;
+
+        // Audio Engine Variables
+        let audioCtx = null;
+        let isAudioMuted = false;
+        let engineOsc = null;
+        let engineGain = null;
+        let bgmOsc = null;
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            loadUserData();
+            initTeamGrid();
+            initGarageUI();
+            setupInputListeners();
+
+            // Request animation loop
+            requestAnimationFrame(gameLoop);
+        });
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // --- LOCAL STORAGE & USER DATA ---
+        function loadUserData() {
+            try {
+                const saved = localStorage.getItem('neon_racer_f1_data');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    upgrades = { ...upgrades, ...parsed };
+                }
+            } catch (e) {
+                console.warn('LocalStorage error:', e);
+            }
+        }
+
+        function saveUserData() {
+            try {
+                localStorage.setItem('neon_racer_f1_data', JSON.stringify(upgrades));
+            } catch (e) {
+                console.warn('Save failed:', e);
+            }
+        }
+
+        function unlockAchievement(id) {
+            if (!upgrades.unlockedAchievements.includes(id)) {
+                upgrades.unlockedAchievements.push(id);
+                saveUserData();
+                const ach = ACHIEVEMENTS.find(a => a.id === id);
+                if (ach) {
+                    showComboNotification(`成就解鎖: ${ach.icon} ${ach.title}`);
+                }
+            }
+        }
+
+        // --- PROCEDURAL SYNTHWAVE AUDIO ENGINE ---
+        function initAudioEngine() {
+            if (audioCtx) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+
+            // V10 Engine Noise Generator
+            try {
+                engineOsc = audioCtx.createOscillator();
+                engineGain = audioCtx.createGain();
+                engineOsc.type = 'sawtooth';
+                engineOsc.frequency.setValueAtTime(60, audioCtx.currentTime);
+                engineGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+
+                engineOsc.connect(engineGain);
+                engineGain.connect(audioCtx.destination);
+                engineOsc.start();
+            } catch (e) {}
+
+            startProceduralBGM();
+        }
+
+        function startProceduralBGM() {
+            if (!audioCtx || isAudioMuted) return;
+
+            // Simple Synthwave Procedural Bassline Timer
+            let step = 0;
+            const notes = [110, 110, 130, 110, 146, 130, 110, 98]; // A2 bass notes
+            
+            setInterval(() => {
+                if (gameState === 'PLAYING' && !isAudioMuted && audioCtx) {
+                    try {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(notes[step % notes.length], audioCtx.currentTime);
+                        
+                        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + 0.2);
+
+                        step++;
+                    } catch (e) {}
+                }
+            }, 200);
+        }
+
+        function updateEngineSound() {
+            if (!engineOsc || !audioCtx || isAudioMuted) return;
+            // Pitch F1 Engine synth oscillator with real KM/H
+            const pitch = 50 + (player.speed / 350) * 220;
+            engineOsc.frequency.setTargetAtTime(pitch, audioCtx.currentTime, 0.05);
+        }
+
+        function playSound(type) {
+            if (!audioCtx || isAudioMuted) return;
+            try {
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'coin') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(987.77, now); // B5
+                    osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'nitro') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(120, now);
+                    osc.frequency.linearRampToValueAtTime(450, now + 0.4);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'explosion') {
+                    // White noise blast simulation
+                    const bufferSize = audioCtx.sampleRate * 0.4;
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    const noise = audioCtx.createBufferSource();
+                    noise.buffer = buffer;
+                    const filter = audioCtx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(800, now);
+                    filter.frequency.linearRampToValueAtTime(50, now + 0.4);
+
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    noise.start(now);
+                } else if (type === 'missile') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            } catch (e) {}
+        }
+
+        // --- UI & MENU FUNCTIONS ---
+        function initTeamGrid() {
+            const grid = document.getElementById('teamGrid');
+            grid.innerHTML = '';
+
+            Object.keys(TEAMS).forEach(key => {
+                const team = TEAMS[key];
+                const card = document.createElement('div');
+                card.className = `glass-panel p-3 rounded-2xl cursor-pointer border-2 transition-all ${key === selectedTeamKey ? 'border-cyan-400 bg-cyan-500/10' : 'border-transparent hover:border-gray-600'}`;
+                card.onclick = () => selectTeam(key);
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-2 mb-1">
+                        <div class="w-3.5 h-3.5 rounded-full border border-white" style="background-color: ${team.color}"></div>
+                        <div class="font-bold text-xs md:text-sm text-white">${team.name}</div>
+                    </div>
+                    <div class="text-[11px] text-cyan-300 font-medium">${team.bonusText}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function selectTeam(key) {
+            selectedTeamKey = key;
+            initTeamGrid();
+        }
+
+        function initGarageUI() {
+            document.getElementById('garageCoins').innerText = `$${upgrades.totalCoins}`;
+            document.getElementById('lvlSpeed').innerText = `等級: ${upgrades.speed} / 5`;
+            document.getElementById('lvlAccel').innerText = `等級: ${upgrades.accel} / 5`;
+            document.getElementById('lvlNitro').innerText = `等級: ${upgrades.nitro} / 5`;
+
+            // Achievements List
+            const container = document.getElementById('achievementsList');
+            container.innerHTML = '';
+            ACHIEVEMENTS.forEach(ach => {
+                const unlocked = upgrades.unlockedAchievements.includes(ach.id);
+                const div = document.createElement('div');
+                div.className = `p-2.5 rounded-xl border flex items-center gap-2 ${unlocked ? 'bg-cyan-500/10 border-cyan-400/50 text-white' : 'bg-gray-900/40 border-gray-800 text-gray-500'}`;
+                div.innerHTML = `
+                    <div class="text-xl">${ach.icon}</div>
+                    <div>
+                        <div class="font-bold">${ach.title}</div>
+                        <div class="text-[10px] opacity-75">${ach.desc}</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function setupInputListeners() {
+            // Keyboard
+            window.addEventListener('keydown', e => {
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+                if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
+                if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
+                if (e.code === 'Space') keys.nitro = true;
+                if (e.code === 'KeyF') launchMissile();
+            });
+
+            window.addEventListener('keyup', e => {
+                if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+                if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+                if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
+                if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
+                if (e.code === 'Space') keys.nitro = false;
+            });
+
+            // Touch UI buttons
+            const bindTouchBtn = (id, keyName) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+                btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+            };
+            bindTouchBtn('btnTouchLeft', 'left');
+            bindTouchBtn('btnTouchRight', 'right');
+            bindTouchBtn('btnTouchNitro', 'nitro');
+            bindTouchBtn('btnTouchBrake', 'down');
+            document.getElementById('btnTouchMissile').onclick = launchMissile;
+
+            // Direct Canvas Touch Drag
+            canvas.addEventListener('touchmove', (e) => {
+                if (gameState !== 'PLAYING') return;
+                const touch = e.touches[0];
+                const normalizedX = (touch.clientX / canvas.width) * 2 - 1; // -1 to 1
+                player.x = Math.max(-0.85, Math.min(0.85, normalizedX));
+            });
+
+            // Buttons
+            document.getElementById('btnStartGame').onclick = startGame;
+            document.getElementById('btnOpenGarage').onclick = () => {
+                initGarageUI();
+                document.getElementById('garageModal').classList.remove('hidden');
+            };
+            document.getElementById('btnCloseGarage').onclick = () => {
+                document.getElementById('garageModal').classList.add('hidden');
+            };
+            document.getElementById('btnRestart').onclick = startGame;
+            document.getElementById('btnReturnMenu').onclick = returnToMenu;
+
+            // Upgrade Actions
+            document.getElementById('btnBuySpeed').onclick = () => buyUpgrade('speed', 200);
+            document.getElementById('btnBuyAccel').onclick = () => buyUpgrade('accel', 200);
+            document.getElementById('btnBuyNitro').onclick = () => buyUpgrade('nitro', 250);
+
+            // Audio Toggle Button
+            document.getElementById('btnToggleAudio').onclick = () => {
+                isAudioMuted = !isAudioMuted;
+                document.getElementById('audioIcon').className = isAudioMuted ? 'fa-solid fa-volume-xmark text-red-400' : 'fa-solid fa-volume-high text-cyan-400';
+            };
+
+            // Gyroscope Permission / Calibration
+            document.getElementById('btnGyroCalibrate').onclick = setupGyroscope;
+        }
+
+        function buyUpgrade(type, cost) {
+            if (upgrades.totalCoins >= cost && upgrades[type] < 5) {
+                upgrades.totalCoins -= cost;
+                upgrades[type]++;
+                saveUserData();
+                initGarageUI();
+            }
+        }
+
+        function setupGyroscope() {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(state => {
+                        if (state === 'granted') {
+                            window.addEventListener('deviceorientation', handleGyro);
+                            gyroActive = true;
+                            alert('陀螺儀已成功開啟與校准！');
+                        }
+                    }).catch(console.error);
+            } else if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', handleGyro);
+                gyroActive = true;
+                alert('陀螺儀校準完成！');
+            } else {
+                alert('您的裝置不支援陀螺儀感應。');
+            }
+        }
+
+        function handleGyro(e) {
+            if (e.gamma !== null) {
+                gyroGamma = e.gamma - gyroZero;
+            }
+        }
+
+        // --- GAMEPLAY LOOPS & RESET ---
+        function startGame() {
+            initAudioEngine();
+            unlockAchievement('first_race');
+
+            gameState = 'PLAYING';
+            score = 0;
+            sessionCoins = 0;
+            distanceTraveled = 0;
+            bossesDefeated = 0;
+            currentWeatherIdx = 0;
+            weatherTimer = 0;
+
+            const team = TEAMS[selectedTeamKey];
+            player.baseMaxSpeed = (280 + upgrades.speed * 12) * team.speedMult;
+            player.currentMaxSpeed = player.baseMaxSpeed;
+            player.accel = (180 + upgrades.accel * 20) * team.accelMult;
+            player.x = 0;
+            player.speed = 100;
+            player.nitro = 100;
+            player.shieldTime = 0;
+            player.magnetTime = 0;
+            player.missiles = 1; // Give 1 free missile at start
+
+            rivals = [];
+            powerups = [];
+            particles = [];
+            missiles = [];
+            boss = null;
+
+            // UI Visibility Toggle
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('garageModal').classList.add('hidden');
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            document.getElementById('topHUD').classList.remove('hidden');
+            document.getElementById('bottomHUD').classList.remove('hidden');
+
+            // Show Touch overlay if mobile
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                document.getElementById('touchControls').classList.remove('hidden');
+            }
+
+            lastTime = performance.now();
+        }
+
+        function returnToMenu() {
+            gameState = 'MENU';
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            document.getElementById('topHUD').classList.add('hidden');
+            document.getElementById('bottomHUD').classList.add('hidden');
+            document.getElementById('touchControls').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            playSound('explosion');
+
+            upgrades.totalCoins += sessionCoins;
+            if (score > (upgrades.highScore || 0)) {
+                upgrades.highScore = Math.floor(score);
+            }
+            saveUserData();
+
+            if (score >= 1000) unlockAchievement('score_1000');
+            if (sessionCoins >= 100) unlockAchievement('coin_collector');
+
+            // Populate Game Over HUD
+            document.getElementById('goScore').innerText = Math.floor(score);
+            document.getElementById('goHighScore').innerText = upgrades.highScore || Math.floor(score);
+            document.getElementById('goCoins').innerText = `+$${sessionCoins}`;
+            document.getElementById('goBosses').innerText = bossesDefeated;
+
+            document.getElementById('gameOverMenu').classList.remove('hidden');
+        }
+
+        function showComboNotification(text) {
+            const el = document.getElementById('floatingCombo');
+            const txt = document.getElementById('comboText');
+            txt.innerText = text;
+            el.classList.remove('opacity-0');
+            el.classList.add('opacity-100', '-translate-y-4');
+            setTimeout(() => {
+                el.classList.remove('opacity-100', '-translate-y-4');
+                el.classList.add('opacity-0');
+            }, 1200);
+        }
+
+        function launchMissile() {
+            if (gameState !== 'PLAYING' || player.missiles <= 0) return;
+            player.missiles--;
+            playSound('missile');
+
+            missiles.push({
+                x: player.x,
+                y: canvas.height - 130,
+                speed: 1200
+            });
+        }
+
+        // --- MAIN UPDATE & DRAW ENGINE ---
+        function gameLoop(now) {
+            const dt = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+
+            if (gameState === 'PLAYING') {
+                updateGame(dt);
+            }
+
+            renderGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateGame(dt) {
+            const team = TEAMS[selectedTeamKey];
+            const weather = WEATHERS[currentWeatherIdx];
+
+            // Weather Timer cycle
+            weatherTimer += dt;
+            if (weatherTimer > 35) { // Switch weather every 35s
+                weatherTimer = 0;
+                currentWeatherIdx = (currentWeatherIdx + 1) % WEATHERS.length;
+                showComboNotification(`天氣變更: ${WEATHERS[currentWeatherIdx].name}`);
+            }
+
+            // Gyroscope Steering handling
+            if (gyroActive) {
+                player.x += (gyroGamma / 25) * player.handling * dt;
+            }
+
+            // Keyboard Steering
+            if (keys.left) player.x -= player.handling * dt * weather.grip;
+            if (keys.right) player.x += player.handling * dt * weather.grip;
+            player.x = Math.max(-0.85, Math.min(0.85, player.x));
+
+            // Nitro Boost logic
+            if (keys.nitro && player.nitro > 0) {
+                player.isNitroActive = true;
+                player.nitro -= (25 / team.nitroMult) * dt;
+                player.currentMaxSpeed = player.baseMaxSpeed * 1.35;
+                player.speed += player.accel * 1.5 * dt;
+                screenShake = Math.max(screenShake, 3);
+
+                if (Math.random() < 0.6) {
+                    particles.push({
+                        x: canvas.width / 2 + (player.x * canvas.width * 0.35),
+                        y: canvas.height - 90,
+                        vx: (Math.random() - 0.5) * 60,
+                        vy: 100 + Math.random() * 150,
+                        life: 0.3,
+                        color: '#00f0ff'
+                    });
+                }
+            } else {
+                player.isNitroActive = false;
+                player.currentMaxSpeed = player.baseMaxSpeed;
+                // Recharge nitro slowly
+                player.nitro = Math.min(100, player.nitro + 10 * dt);
+            }
+
+            // Speed Control
+            if (keys.up) {
+                player.speed += player.accel * dt;
+            } else if (keys.down) {
+                player.speed -= player.accel * 2.0 * dt; // Brake
+                // Spark particles when braking at speed
+                if (player.speed > 150) {
+                    particles.push({
+                        x: canvas.width / 2 + (player.x * canvas.width * 0.35) + (Math.random() - 0.5) * 30,
+                        y: canvas.height - 80,
+                        vx: (Math.random() - 0.5) * 120,
+                        vy: (Math.random() - 0.5) * 50,
+                        life: 0.2,
+                        color: '#ff8000'
+                    });
+                }
+            } else {
+                // Natural deceleration
+                player.speed -= 40 * dt;
+            }
+
+            player.speed = Math.max(60, Math.min(player.currentMaxSpeed, player.speed));
+            if (player.speed > 320) unlockAchievement('speed_demon');
+
+            // Score & Distance progression
+            distanceTraveled += (player.speed / 3.6) * dt;
+            score += (player.speed / 20) * dt;
+
+            // Powerup status timers
+            if (player.shieldTime > 0) player.shieldTime -= dt;
+            if (player.magnetTime > 0) player.magnetTime -= dt;
+
+            // Spawn Cyber Boss encounter every 1,000 points
+            if (!boss && score > 0 && Math.floor(score) % 1000 < 50 && Math.floor(score) >= 1000) {
+                boss = {
+                    x: 0,
+                    y: 120,
+                    maxHp: 100 + bossesDefeated * 50,
+                    hp: 100 + bossesDefeated * 50,
+                    vx: 0.8,
+                    shootTimer: 0
+                };
+                showComboNotification('⚠️ 網絡霸主 CYBER BOSS 降臨！');
+            }
+
+            // Update Boss Logic
+            if (boss) {
+                boss.x += boss.vx * dt;
+                if (boss.x > 0.7 || boss.x < -0.7) boss.vx *= -1;
+
+                // Boss attack pattern
+                boss.shootTimer += dt;
+                if (boss.shootTimer > 2.2) {
+                    boss.shootTimer = 0;
+                    powerups.push({
+                        type: 'OIL',
+                        x: boss.x,
+                        y: boss.y + 40,
+                        speed: -player.speed * 0.3
+                    });
+                }
+
+                // Nitro Ram attack against boss
+                if (player.isNitroActive && Math.abs(player.x - boss.x) < 0.25) {
+                    boss.hp -= 40 * dt;
+                    screenShake = 6;
+                    if (boss.hp <= 0) destroyBoss();
+                }
+            }
+
+            // Spawning Rivals / Traffic AI
+            if (rivals.length < 4 && Math.random() < 0.03) {
+                const colors = ['#ff0055', '#00ff66', '#ffff00', '#aa00ff', '#ffffff'];
+                rivals.push({
+                    x: (Math.random() - 0.5) * 1.5,
+                    y: -200,
+                    speed: player.speed * (0.5 + Math.random() * 0.35),
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    laneChangeTimer: Math.random() * 3
+                });
+            }
+
+            // Update Rivals AI
+            for (let i = rivals.length - 1; i >= 0; i--) {
+                const r = rivals[i];
+                r.y += (player.speed - r.speed) * dt * 3.5;
+
+                // Smart AI Lane switching
+                r.laneChangeTimer -= dt;
+                if (r.laneChangeTimer < 0) {
+                    r.laneChangeTimer = 2 + Math.random() * 4;
+                    r.targetX = (Math.random() - 0.5) * 1.5;
+                }
+                if (r.targetX !== undefined) {
+                    r.x += (r.targetX - r.x) * dt * 0.8;
+                }
+
+                // Near-Miss Close Pass Check
+                if (Math.abs(r.y - (canvas.height - 140)) < 40 && Math.abs(r.x - player.x) < 0.28 && Math.abs(r.x - player.x) > 0.16 && !r.passed) {
+                    r.passed = true;
+                    score += 100;
+                    showComboNotification('極限掠過 NEAR MISS +100');
+                }
+
+                // Collision Check
+                if (Math.abs(r.y - (canvas.height - 140)) < 45 && Math.abs(r.x - player.x) < 0.16) {
+                    if (player.shieldTime > 0) {
+                        // Shield blocks collision
+                        rivals.splice(i, 1);
+                        screenShake = 8;
+                        playSound('explosion');
+                        createExplosionParticles(canvas.width / 2 + (r.x * canvas.width * 0.35), canvas.height - 140);
+                    } else {
+                        gameOver();
+                        return;
+                    }
+                }
+
+                if (r.y > canvas.height + 200) rivals.splice(i, 1);
+            }
+
+            // Spawning Powerups & Collectibles
+            if (powerups.length < 5 && Math.random() < 0.025) {
+                const types = ['COIN', 'COIN', 'COIN', 'SHIELD', 'NITRO', 'MAGNET', 'MISSILE'];
+                powerups.push({
+                    type: types[Math.floor(Math.random() * types.length)],
+                    x: (Math.random() - 0.5) * 1.5,
+                    y: -150
+                });
+            }
+
+            // Update Powerups Logic
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const p = powerups[i];
+                p.y += player.speed * dt * 3.5;
+
+                // Magnet Effect
+                if (player.magnetTime > 0 && p.type === 'COIN') {
+                    p.x += (player.x - p.x) * dt * 4;
+                }
+
+                // Pickup Collision Check
+                if (Math.abs(p.y - (canvas.height - 140)) < 45 && Math.abs(p.x - player.x) < 0.18) {
+                    if (p.type === 'COIN') {
+                        const earned = Math.round(10 * team.coinMult);
+                        sessionCoins += earned;
+                        score += 50;
+                        playSound('coin');
+                    } else if (p.type === 'SHIELD') {
+                        player.shieldTime = 8 * (selectedTeamKey === 'williams' ? 1.4 : 1.0);
+                        playSound('coin');
+                    } else if (p.type === 'NITRO') {
+                        player.nitro = Math.min(100, player.nitro + 50);
+                        playSound('nitro');
+                    } else if (p.type === 'MAGNET') {
+                        player.magnetTime = 10;
+                        playSound('coin');
+                    } else if (p.type === 'MISSILE') {
+                        player.missiles += 2;
+                        playSound('coin');
+                    } else if (p.type === 'OIL') {
+                        if (player.shieldTime <= 0) {
+                            player.speed *= 0.7; // Oil slowdown
+                            screenShake = 5;
+                        }
+                    }
+                    powerups.splice(i, 1);
+                    continue;
+                }
+
+                if (p.y > canvas.height + 150) powerups.splice(i, 1);
+            }
+
+            // Update Missiles Logic
+            for (let i = missiles.length - 1; i >= 0; i--) {
+                const m = missiles[i];
+                m.y -= m.speed * dt;
+
+                // Check hit against boss
+                if (boss && Math.abs(m.y - boss.y) < 50 && Math.abs(m.x - boss.x) < 0.3) {
+                    boss.hp -= 35;
+                    screenShake = 10;
+                    playSound('explosion');
+                    createExplosionParticles(canvas.width / 2 + (boss.x * canvas.width * 0.35), boss.y);
+                    missiles.splice(i, 1);
+                    if (boss.hp <= 0) destroyBoss();
+                    continue;
+                }
+
+                // Hit rival cars
+                for (let j = rivals.length - 1; j >= 0; j--) {
+                    const r = rivals[j];
+                    if (Math.abs(m.y - r.y) < 40 && Math.abs(m.x - r.x) < 0.2) {
+                        createExplosionParticles(canvas.width / 2 + (r.x * canvas.width * 0.35), r.y);
+                        playSound('explosion');
+                        rivals.splice(j, 1);
+                        missiles.splice(i, 1);
+                        score += 200;
+                        break;
+                    }
+                }
+
+                if (m.y < -100) missiles.splice(i, 1);
+            }
+
+            // Update Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx * dt;
+                pt.y += pt.vy * dt;
+                pt.life -= dt;
+                if (pt.life <= 0) particles.splice(i, 1);
+            }
+
+            // Update Audio & HUD UI
+            updateEngineSound();
+            updateHUDUI();
+
+            if (screenShake > 0) screenShake -= dt * 10;
+        }
+
+        function destroyBoss() {
+            bossesDefeated++;
+            score += 1500;
+            sessionCoins += 200;
+            unlockAchievement('boss_slayer');
+            showComboNotification('💥 成功擊敗 霸主 BOSS! +1500');
+            playSound('explosion');
+            createExplosionParticles(canvas.width / 2 + (boss.x * canvas.width * 0.35), boss.y);
+            boss = null;
+        }
+
+        function createExplosionParticles(x, y) {
+            for (let i = 0; i < 25; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 350,
+                    vy: (Math.random() - 0.5) * 350,
+                    life: 0.5 + Math.random() * 0.3,
+                    color: ['#ff0055', '#ffaa00', '#ffff00', '#ffffff'][Math.floor(Math.random() * 4)]
+                });
+            }
+        }
+
+        function updateHUDUI() {
+            document.getElementById('hudScore').innerText = Math.floor(score);
+            document.getElementById('hudCoins').innerText = `$${sessionCoins}`;
+            document.getElementById('hudSpeed').innerText = Math.floor(player.speed);
+            document.getElementById('hudMissiles').innerText = player.missiles;
+
+            // Nitro Gauge
+            const nitroPct = Math.max(0, Math.floor(player.nitro));
+            document.getElementById('nitroBar').style.width = `${nitroPct}%`;
+            document.getElementById('nitroPercentText').innerText = `${nitroPct}%`;
+
+            // Active Powerup Badges
+            document.getElementById('badgeShield').classList.toggle('hidden', player.shieldTime <= 0);
+            document.getElementById('badgeMagnet').classList.toggle('hidden', player.magnetTime <= 0);
+            document.getElementById('badgeNitro').classList.toggle('hidden', !player.isNitroActive);
+
+            // Boss Health Bar UI
+            const bossHud = document.getElementById('bossHUD');
+            if (boss) {
+                bossHud.classList.remove('hidden');
+                const pct = Math.max(0, Math.floor((boss.hp / boss.maxHp) * 100));
+                document.getElementById('bossHealthBar').style.width = `${pct}%`;
+                document.getElementById('bossHealthText').innerText = `${pct}%`;
+            } else {
+                bossHud.classList.add('hidden');
+            }
+        }
+
+        // --- RENDER & CANVAS DRAWING ---
+        function renderGame() {
+            ctx.save();
+
+            // Screen Shake Effect
+            if (screenShake > 0) {
+                ctx.translate((Math.random() - 0.5) * screenShake * 2, (Math.random() - 0.5) * screenShake * 2);
+            }
+
+            const weather = WEATHERS[currentWeatherIdx];
+
+            // 1. Draw Skybox Background
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.5);
+            skyGrad.addColorStop(0, weather.skyTop);
+            skyGrad.addColorStop(1, weather.skyBot);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid Horizon / Sun synthwave effect
+            drawSynthSun();
+
+            // 2. Pseudo-3D Perspective Road Projection
+            const horizonY = canvas.height * 0.42;
+            const roadWidthBottom = canvas.width * 0.85;
+            const roadWidthTop = 60;
+
+            const roadGrad = ctx.createLinearGradient(0, horizonY, 0, canvas.height);
+            roadGrad.addColorStop(0, '#0a0915');
+            roadGrad.addColorStop(1, weather.roadColor);
+            ctx.fillStyle = roadGrad;
+
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2 - roadWidthTop / 2, horizonY);
+            ctx.lineTo(canvas.width / 2 + roadWidthTop / 2, horizonY);
+            ctx.lineTo(canvas.width / 2 + roadWidthBottom / 2, canvas.height);
+            ctx.lineTo(canvas.width / 2 - roadWidthBottom / 2, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Road Neon Borders
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#00f0ff';
+            ctx.shadowBlur = 15;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Animated Road Grid Lines
+            const lineOffset = (distanceTraveled * 8) % 40;
+            ctx.strokeStyle = 'rgba(255, 0, 127, 0.4)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 15; i++) {
+                const z = (i * 40 - lineOffset);
+                if (z < 0) continue;
+                const py = horizonY + (Math.pow(z / 600, 2)) * (canvas.height - horizonY);
+                if (py > horizonY && py < canvas.height) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, py);
+                    ctx.lineTo(canvas.width, py);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw Powerups & Collectibles
+            powerups.forEach(p => {
+                const px = canvas.width / 2 + (p.x * canvas.width * 0.35);
+                drawPowerupItem(p.type, px, p.y);
+            });
+
+            // Draw Rivals F1 Cars
+            rivals.forEach(r => {
+                const rx = canvas.width / 2 + (r.x * canvas.width * 0.35);
+                drawF1Car(rx, r.y, r.color, false);
+            });
+
+            // Draw Player F1 Car
+            const playerPx = canvas.width / 2 + (player.x * canvas.width * 0.35);
+            const playerPy = canvas.height - 120;
+            const team = TEAMS[selectedTeamKey];
+            drawF1Car(playerPx, playerPy, team.color, true, team.accent);
+
+            // Draw Shield Bubble around player
+            if (player.shieldTime > 0) {
+                ctx.strokeStyle = '#00f0ff';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = '#00f0ff';
+                ctx.shadowBlur = 20;
+                ctx.beginPath();
+                ctx.arc(playerPx, playerPy, 55, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // Draw Boss Ship
+            if (boss) {
+                const bx = canvas.width / 2 + (boss.x * canvas.width * 0.35);
+                drawBossShip(bx, boss.y);
+            }
+
+            // Draw Missiles
+            missiles.forEach(m => {
+                const mx = canvas.width / 2 + (m.x * canvas.width * 0.35);
+                ctx.fillStyle = '#ffcc00';
+                ctx.shadowColor = '#ff8000';
+                ctx.shadowBlur = 10;
+                ctx.fillRect(mx - 4, m.y, 8, 20);
+                ctx.shadowBlur = 0;
+            });
+
+            // Draw Particles
+            particles.forEach(pt => {
+                ctx.fillStyle = pt.color;
+                ctx.fillRect(pt.x, pt.y, 4, 4);
+            });
+
+            // Weather Rain Overlay
+            if (weather.rain) {
+                ctx.strokeStyle = 'rgba(180, 220, 255, 0.3)';
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < 40; i++) {
+                    const rx = (Math.sin(i * 99) * 0.5 + 0.5) * canvas.width;
+                    const ry = ((performance.now() * 1.5 + i * 150) % canvas.height);
+                    ctx.beginPath();
+                    ctx.moveTo(rx, ry);
+                    ctx.lineTo(rx - 5, ry + 25);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.restore();
+        }
+
+        // --- DRAWING HELPERS ---
+        function drawSynthSun() {
+            const sunX = canvas.width / 2;
+            const sunY = canvas.height * 0.38;
+            const radius = 70;
+
+            const sunGrad = ctx.createLinearGradient(0, sunY - radius, 0, sunY + radius);
+            sunGrad.addColorStop(0, '#ffe600');
+            sunGrad.addColorStop(1, '#ff0055');
+
+            ctx.fillStyle = sunGrad;
+            ctx.shadowColor = '#ff0055';
+            ctx.shadowBlur = 25;
+            ctx.beginPath();
+            ctx.arc(sunX, sunY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawF1Car(x, y, mainColor, isPlayer = false, accentColor = '#ffffff') {
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Open Wheels (4 Tires)
+            ctx.fillStyle = '#111115';
+            ctx.fillRect(-28, -35, 10, 22); // Front Left
+            ctx.fillRect(18, -35, 10, 22);  // Front Right
+            ctx.fillRect(-30, 20, 12, 26);  // Rear Left
+            ctx.fillRect(18, 20, 12, 26);   // Rear Right
+
+            // F1 Aerodynamic Nose Cone & Body
+            ctx.fillStyle = mainColor;
+            ctx.beginPath();
+            ctx.moveTo(0, -48);
+            ctx.lineTo(12, -20);
+            ctx.lineTo(15, 25);
+            ctx.lineTo(-15, 25);
+            ctx.lineTo(-12, -20);
+            ctx.closePath();
+            ctx.fill();
+
+            // Front Wing
+            ctx.fillStyle = accentColor;
+            ctx.fillRect(-26, -46, 52, 7);
+
+            // Rear Wing
+            ctx.fillRect(-24, 34, 48, 8);
+
+            // Sidepods
+            ctx.fillStyle = mainColor;
+            ctx.fillRect(-20, -10, 8, 28);
+            ctx.fillRect(12, -10, 8, 28);
+
+            // Cockpit & Halo Ring
+            ctx.fillStyle = '#050508';
+            ctx.beginPath();
+            ctx.arc(0, -5, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#aaaaaa';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, -5, 9, Math.PI, Math.PI * 2);
+            ctx.stroke();
+
+            // Exhaust Backfire visual on Player Nitro
+            if (isPlayer && player.isNitroActive) {
+                ctx.fillStyle = '#00f0ff';
+                ctx.shadowColor = '#00f0ff';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.moveTo(-6, 42);
+                ctx.lineTo(0, 65 + Math.random() * 15);
+                ctx.lineTo(6, 42);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.restore();
+        }
+
+        function drawBossShip(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            ctx.fillStyle = '#1e002b';
+            ctx.strokeStyle = '#ff0055';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#ff0055';
+            ctx.shadowBlur = 20;
+
+            // Aggressive Cyber Stealth Fighter Wings
+            ctx.beginPath();
+            ctx.moveTo(0, -30);
+            ctx.lineTo(60, 20);
+            ctx.lineTo(30, 40);
+            ctx.lineTo(0, 25);
+            ctx.lineTo(-30, 40);
+            ctx.lineTo(-60, 20);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Glowing Core
+            ctx.fillStyle = '#ff0055';
+            ctx.beginPath();
+            ctx.arc(0, 5, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawPowerupItem(type, x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            if (type === 'COIN') {
+                ctx.fillStyle = '#ffcc00';
+                ctx.shadowColor = '#ffcc00';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', 0, 1);
+            } else if (type === 'SHIELD') {
+                ctx.fillStyle = '#00f0ff';
+                ctx.shadowColor = '#00f0ff';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(0, 0, 14, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('S', 0, 1);
+            } else if (type === 'NITRO') {
+                ctx.fillStyle = '#ff6600';
+                ctx.shadowColor = '#ff6600';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(0, 0, 14, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('N', 0, 1);
+            } else if (type === 'MISSILE') {
+                ctx.fillStyle = '#ff0055';
+                ctx.shadowColor = '#ff0055';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(0, 0, 14, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🚀', 0, 1);
+            } else if (type === 'OIL') {
+                ctx.fillStyle = '#222222';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 20, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+    </script>
+</body>
+</html>
